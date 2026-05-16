@@ -12,10 +12,13 @@ contract Token is ERC20 {
     error OnlyJointVentureContract();
 
     constructor(
-        address _owner,
-        address _jointVenture
+        address _owner
     ) ERC20("Celo Workshop Token", "CWT") {
         owner = _owner;
+    }
+
+    function setJointVenture(address _jointVenture) external {
+        if (msg.sender != owner) revert OnlyOwner();
         jointVenture = _jointVenture;
     }
 
