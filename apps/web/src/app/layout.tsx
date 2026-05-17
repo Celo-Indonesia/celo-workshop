@@ -1,32 +1,37 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import './globals.css';
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import { headers } from "next/headers";
+import { cookieToInitialState } from "wagmi";
+import "./globals.css";
 
-import { Navbar } from '@/components/navbar';
-import { WalletProvider } from "@/components/wallet-provider"
+import { Navbar } from "@/components/navbar";
+import { WalletProvider } from "@/components/wallet-provider";
+import { wagmiConfig } from "@/lib/wagmi";
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'celo-workshop-ugm',
-  description: 'A new Celo blockchain project',
+  title: "celo-workshop-ugm",
+  description: "A new Celo blockchain project",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const initialState = cookieToInitialState(
+    wagmiConfig,
+    (await headers()).get("cookie")
+  );
+
   return (
     <html lang="en">
       <body className={inter.className}>
-        {/* Navbar is included on all pages */}
         <div className="relative flex min-h-screen flex-col">
-          <WalletProvider>
+          <WalletProvider initialState={initialState}>
             <Navbar />
-            <main className="flex-1">
-              {children}
-            </main>
+            <main className="flex-1">{children}</main>
           </WalletProvider>
         </div>
       </body>

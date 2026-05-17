@@ -1,65 +1,75 @@
 "use client";
 
-import { RainbowKitProvider, connectorsForWallets } from "@rainbow-me/rainbowkit";
+import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import "@rainbow-me/rainbowkit/styles.css";
-import { injectedWallet } from "@rainbow-me/rainbowkit/wallets";
+// RainbowKitProvider tetap dipakai agar styling modal wallet berjalan
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { WagmiProvider, createConfig, http, useConnect } from "wagmi";
-import { celo, celoSepolia } from "wagmi/chains";
-import { ConnectButton } from "./connect-button";
+import { WagmiProvider, useConnect, useAccount, useDisconnect } from "wagmi";
+import type { State } from "wagmi";
+import { Button } from "@/components/ui/button";
+import { wagmiConfig } from "@/lib/wagmi";
 
-const connectors = connectorsForWallets(
-  [
-    {
-      groupName: "Recommended",
-      wallets: [injectedWallet],
-    },
-  ],
-  {
-    appName: "celo-workshop-ugm",
-    projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID!,
-  }
-);
+function makeQueryClient() {
+  return new QueryClient();
+}
 
-const wagmiConfig = createConfig({
-  chains: [celo, celoSepolia],
-  connectors,
-  transports: {
-    [celo.id]: http(),
-    [celoSepolia.id]: http(),
-  },
-  ssr: true,
-});
+let browserQueryClient: QueryClient | undefined;
 
-const queryClient = new QueryClient();
+function getQueryClient() {
+  if (typeof window === "undefined") return makeQueryClient();
+  if (!browserQueryClient) browserQueryClient = makeQueryClient();
+  return browserQueryClient;
+}
 
-function WalletProviderInner({ children }: { children: React.ReactNode }) {
+function MiniPayAutoConnect() {
   const { connect, connectors } = useConnect();
 
   useEffect(() => {
-    // Check if the app is running inside MiniPay
-    if (window.ethereum && window.ethereum.isMiniPay) {
-      // Find the injected connector, which is what MiniPay uses
-      const injectedConnector = connectors.find((c) => c.id === "injected");
-      if (injectedConnector) {
-        connect({ connector: injectedConnector });
-      }
+    if (window.ethereum?.isMiniPay) {
+      const injected = connectors.find((c) => c.id === "injected");
+      if (injected) connect({ connector: injected });
     }
   }, [connect, connectors]);
 
-  return <>{children}</>;
+  return null;
 }
 
-export function WalletProvider({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+export function ConnectButton() {
+  const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
+  const { disconnect } = useDisconnect();
+
+  if (isConnected && address) {
+    return (
+      <Button variant="outline" onClick={() => disconnect()}>
+        {address.slice(0, 6)}...{address.slice(-4)}
+      </Button>
+    );
+  }
 
   return (
-    <WagmiProvider config={wagmiConfig}>
+    <Button onClick={() => connect({ connector: connectors[0] })}>
+      Connect Wallet
+    </Button>
+  );
+}
+
+export function WalletProvider({
+  children,
+  initialState,
+}: {
+  children: React.ReactNode;
+  initialState?: State;
+}) {
+  const queryClient = getQueryClient();
+
+  return (
+    <WagmiProvider config={wagmiConfig} initialState={initialState}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider>
-          <WalletProviderInner>{children}</WalletProviderInner>
+          <MiniPayAutoConnect />
+          {children}
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

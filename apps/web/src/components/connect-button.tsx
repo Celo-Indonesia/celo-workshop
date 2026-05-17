@@ -1,21 +1,28 @@
 "use client";
 
-import { ConnectButton as RainbowKitConnectButton } from "@rainbow-me/rainbowkit";
-import { useEffect, useState } from "react";
+import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { Button } from "@/components/ui/button";
+
+function truncate(address: string) {
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
 
 export function ConnectButton() {
-  const [isMinipay, setIsMinipay] = useState(false);
+  const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
+  const { disconnect } = useDisconnect();
 
-  useEffect(() => {
-    // @ts-ignore
-    if (window.ethereum?.isMiniPay) {
-      setIsMinipay(true);
-    }
-  }, []);
-
-  if (isMinipay) {
-    return null;
+  if (isConnected && address) {
+    return (
+      <Button variant="outline" onClick={() => disconnect()}>
+        {truncate(address)}
+      </Button>
+    );
   }
 
-  return <RainbowKitConnectButton />;
+  return (
+    <Button onClick={() => connect({ connector: connectors[0] })}>
+      Connect Wallet
+    </Button>
+  );
 }
